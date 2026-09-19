@@ -25,6 +25,8 @@ Tauri ships these as **resources / `externalBin` sidecars**; the Rust side spawn
 
 **De-risk order (Rust-independent, do first):** prove a standalone bundle of each service (bundled Node + node_modules + native deps) runs on macOS, then replicate per platform.
 
+✅ **Validated on macOS (2026-09-19):** news2reader built with `nodeLinker: node-modules` (keeping the epub-gen patch) runs as a bare `node dist/server.js` — no Yarn/PnP — serving OPDS and building a **transcoded grayscale JPEG** (so `sharp`'s native binary resolves from `node_modules/@img/sharp-darwin-arm64`). crosspoint-sync already runs as plain `node dist/index.js` (npm + built-in `node:sqlite`). So the sidecar model is confirmed; per-platform work is just fetching the right `sharp` + Node runtime per target (CI).
+
 ## Config / state (managed by the app)
 - Readwise **token**, service **ports**, **TOKEN_ENC_KEY** (for crosspoint-sync credential encryption) — stored in the OS app-data dir; passed as env to the sidecars.
 - On first run / token entry: **auto-link** the `readwise-reader` connector (write the encrypted credential via crosspoint-sync's own code) so the user never does manual wiring.
