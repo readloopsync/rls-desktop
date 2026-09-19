@@ -2,6 +2,7 @@
 //! (news2reader = delivery, crosspoint-sync = archive), persists config, and
 //! serves the popover UI with LAN URLs + QR codes for pairing the X3.
 
+mod autolink;
 mod config;
 mod net;
 mod services;
@@ -140,6 +141,14 @@ fn start_all(state: &AppState) -> Result<(), String> {
     // kosync first so its seed endpoint is up before delivery seeds positions.
     state.services.start(&kosync_spec(state, &cfg))?;
     state.services.start(&opds_spec(state, &cfg))?;
+    // Once crosspoint-sync is up, link the Readwise Reader connector so
+    // archive-on-finish works without the user wiring anything (idempotent).
+    autolink::spawn(
+        cfg.kosync_port,
+        cfg.kosync_user.clone(),
+        cfg.kosync_pass.clone(),
+        cfg.readwise_token.clone(),
+    );
     Ok(())
 }
 

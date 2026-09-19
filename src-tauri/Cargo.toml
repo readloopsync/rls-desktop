@@ -26,6 +26,9 @@ serde_json = "1"
 local-ip-address = "0.6"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 rand = "0.8"
+# HTTP is loopback-only (talks to the bundled crosspoint-sync), so no TLS.
+ureq = { version = "2", default-features = false, features = ["json"] }
+md5 = "0.7"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
