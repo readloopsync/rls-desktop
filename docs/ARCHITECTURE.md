@@ -32,6 +32,16 @@ Tauri ships these as **resources / `externalBin` sidecars**; the Rust side spawn
 - On first run / token entry: **auto-link** the `readwise-reader` connector (write the encrypted credential via crosspoint-sync's own code) so the user never does manual wiring.
 - Services run with our validated defaults: `READWISE_IMAGES=transcode`, `OPDS_PROVIDERS=readwise`, `FINISHED_THRESHOLD≈0.95`, `REGISTRATION_DISABLED=1` (single local user).
 
+## Mount the X3 in Finder (WebDAV over Wi-Fi)
+Goal: the X3 shows up as a drive you drag files onto.
+
+- **Not over USB.** The X3's ESP32-C3 has a fixed USB Serial/JTAG controller (no USB-OTG), so it *cannot* present as a USB mass-storage disk — hardware limit, not fixable in firmware or the app. (ESP32-S3 devices can; the X3 is C3.) The bundled cable is charging/flashing/serial only.
+- **Yes over Wi-Fi.** Crosspoint runs a **WebDAV** server. The app discovers the X3 on the LAN and mounts its WebDAV share as an OS volume, so files drag straight on:
+  - macOS: `mount_webdav` (Finder volume)
+  - Windows: `net use` / WebClient redirector
+  - Linux: `gio mount` / davfs2
+- The app already knows the X3's address (for OPDS), so "Mount X3" is a one-click action once connected. Confirm Crosspoint's WebDAV port/path/auth at build time. macOS first.
+
 ## Networking scope
 - **LAN-first** (device + computer on the same Wi-Fi). The app shows the machine's **LAN IP** OPDS/KOSync URLs + QR codes.
 - Remote access (Tailscale Funnel etc.) is **out of scope** for the app — that's a homelab/self-host concern, handled by the Docker/launchd path in the main repo.
