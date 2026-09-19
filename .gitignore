@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+*.log
+
+# Rust / Tauri
+src-tauri/target/
+target/
+
+# Bundled runtimes / services (produced by the packaging step)
+/vendor/
+/sidecars/
+
+# Secrets & local state
+.env
+.env.*
+!.env.example
+*.local
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
