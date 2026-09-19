@@ -87,8 +87,38 @@ fn resolve_paths(app: &tauri::AppHandle) -> Paths {
 
 // ---- service specs ---------------------------------------------------------
 
+/// If a service dir is a Yarn PnP install (dev builds against the source repos),
+/// return the NODE_OPTIONS needed to run it with plain `node`. Release bundles
+/// use the node-modules linker (no .pnp.cjs), so this returns nothing there.
+fn pnp_env(dir: &PathBuf) -> Vec<(String, String)> {
+    let pnp = dir.join(".pnp.cjs");
+    let loader = dir.join(".pnp.loader.mjs");
+    if pnp.exists() {
+        let mut opts = format!("--require {}", pnp.to_string_lossy());
+        if loader.exists() {
+            opts.push_str(&format!(" --loader file://{}", loader.to_string_lossy()));
+        }
+        vec![("NODE_OPTIONS".into(), opts)]
+    } else {
+        vec![]
+    }
+}
+
 fn opds_spec(state: &AppState, cfg: &AppConfig) -> ServiceSpec {
     let seed_url = format!("http://127.0.0.1:{}/readloop/seed-progress", cfg.kosync_port);
+    let mut env: Vec<(String, String)> = pnp_env(&state.paths.opds_dir);
+    env.extend([
+        ("PORT".into(), cfg.opds_port.to_string()),
+        ("READWISE_TOKEN".into(), cfg.readwise_token.clone()),
+        ("OPDS_PROVIDERS".into(), "readwise".into()),
+        ("OPDS_AUTH_USER".into(), cfg.opds_user.clone()),
+        ("OPDS_AUTH_PASS".into(), cfg.opds_pass.clone()),
+        ("READWISE_IMAGES".into(), "transcode".into()),
+        ("READWISE_FEED_LIMIT".into(), "40".into()),
+        ("READLOOP_SEED_URL".into(), seed_url),
+        ("READLOOP_SEED_SECRET".into(), cfg.seed_secret.clone()),
+        ("READLOOP_SEED_USER".into(), cfg.kosync_user.clone()),
+    ]);
     ServiceSpec {
         name: SVC_OPDS.into(),
         node: state.paths.node.clone(),
@@ -96,22 +126,23 @@ fn opds_spec(state: &AppState, cfg: &AppConfig) -> ServiceSpec {
         cwd: state.paths.opds_dir.clone(),
         log: state.paths.log_dir.join("news2reader.log"),
         port: cfg.opds_port,
-        env: vec![
-            ("PORT".into(), cfg.opds_port.to_string()),
-            ("READWISE_TOKEN".into(), cfg.readwise_token.clone()),
-            ("OPDS_PROVIDERS".into(), "readwise".into()),
-            ("OPDS_AUTH_USER".into(), cfg.opds_user.clone()),
-            ("OPDS_AUTH_PASS".into(), cfg.opds_pass.clone()),
-            ("READWISE_IMAGES".into(), "transcode".into()),
-            ("READWISE_FEED_LIMIT".into(), "40".into()),
-            ("READLOOP_SEED_URL".into(), seed_url),
-            ("READLOOP_SEED_SECRET".into(), cfg.seed_secret.clone()),
-            ("READLOOP_SEED_USER".into(), cfg.kosync_user.clone()),
-        ],
+        env,
     }
 }
 
 fn kosync_spec(state: &AppState, cfg: &AppConfig) -> ServiceSpec {
+    let mut env: Vec<(String, String)> = pnp_env(&state.paths.kosync_dir);
+    env.extend([
+        ("PORT".into(), cfg.kosync_port.to_string()),
+        (
+            "DATABASE_PATH".into(),
+            state.paths.data_dir.join("crosspoint.db").to_string_lossy().to_string(),
+        ),
+        ("TOKEN_ENC_KEY".into(), cfg.token_enc_key.clone()),
+        ("REGISTRATION_DISABLED".into(), "0".into()),
+        ("FINISHED_THRESHOLD".into(), "0.95".into()),
+        ("READLOOP_SEED_SECRET".into(), cfg.seed_secret.clone()),
+    ]);
     ServiceSpec {
         name: SVC_KOSYNC.into(),
         node: state.paths.node.clone(),
@@ -119,17 +150,7 @@ fn kosync_spec(state: &AppState, cfg: &AppConfig) -> ServiceSpec {
         cwd: state.paths.kosync_dir.clone(),
         log: state.paths.log_dir.join("crosspoint-sync.log"),
         port: cfg.kosync_port,
-        env: vec![
-            ("PORT".into(), cfg.kosync_port.to_string()),
-            (
-                "DATABASE_PATH".into(),
-                state.paths.data_dir.join("crosspoint.db").to_string_lossy().to_string(),
-            ),
-            ("TOKEN_ENC_KEY".into(), cfg.token_enc_key.clone()),
-            ("REGISTRATION_DISABLED".into(), "0".into()),
-            ("FINISHED_THRESHOLD".into(), "0.95".into()),
-            ("READLOOP_SEED_SECRET".into(), cfg.seed_secret.clone()),
-        ],
+        env,
     }
 }
 
