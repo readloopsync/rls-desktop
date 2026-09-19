@@ -12,5 +12,24 @@
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design and the packaging plan (the hard part).
 
+## Running in dev
+
+The Rust shell supervises the two Node services as child processes. In dev it
+resolves them from the sibling repos via env vars (a release build bundles them
+under the app resource dir instead). Build each service's `dist/` first, then:
+
+```bash
+# from rls-desktop/
+export RLS_NODE=/path/to/node          # Node >=22.13 (node:sqlite + sharp)
+export RLS_OPDS_DIR="$PWD/../news2reader"
+export RLS_KOSYNC_DIR="$PWD/../crosspoint-sync"
+npm install
+npm run tauri dev
+```
+
+The app writes its config (Readwise token, generated ports/passwords, encryption
+key) to the OS app-config dir and the crosspoint-sync SQLite db + service logs to
+the app-data / app-log dirs — nothing lands in the repo.
+
 ## License
 MIT.

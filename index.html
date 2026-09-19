@@ -4,40 +4,74 @@
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <title>Readloop</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
-
   <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
-
-      <div class="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img
-            src="/src/assets/tauri.svg"
-            class="logo tauri"
-            alt="Tauri logo"
-          />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img
-            src="/src/assets/typescript.svg"
-            class="logo typescript"
-            alt="typescript logo"
-          />
-        </a>
+    <header class="topbar">
+      <div class="brand">Readloop</div>
+      <div class="dots">
+        <span class="dot" id="dot-opds" title="Delivery"></span>
+        <span class="dot" id="dot-kosync" title="Sync"></span>
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+    </header>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
+    <main id="app">
+      <!-- Setup: shown until a Readwise token is saved -->
+      <section id="setup" class="card hidden">
+        <h2>Connect Readwise</h2>
+        <p class="muted">
+          Paste your Readwise access token. Get it at
+          <a href="#" id="token-link">readwise.io/access_token</a>.
+        </p>
+        <input id="token-input" type="password" placeholder="Readwise access token" />
+        <button id="token-save" class="primary">Save &amp; start</button>
+        <p id="setup-error" class="error"></p>
+      </section>
+
+      <!-- Running dashboard -->
+      <section id="dash" class="hidden">
+        <div class="run-row">
+          <button id="run-toggle" class="primary">Start</button>
+          <span id="run-label" class="muted"></span>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Deliver to X3</h3><span class="tag">OPDS</span></div>
+          <p class="muted">Add this OPDS catalog on the X3 (Add Catalog).</p>
+          <div class="qr" id="qr-opds"></div>
+          <code class="url" id="url-opds"></code>
+          <div class="creds">
+            <span>user <b id="opds-user"></b></span>
+            <span>pass <b id="opds-pass"></b></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Sync progress</h3><span class="tag">KOSync</span></div>
+          <p class="muted">On the X3: Settings → KOReader Sync → this server; Sign Up once.</p>
+          <div class="qr" id="qr-kosync"></div>
+          <code class="url" id="url-kosync"></code>
+          <div class="creds">
+            <span>user <b id="kosync-user"></b></span>
+            <span>pass <b id="kosync-pass"></b></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Mount X3 in Finder</h3><span class="tag">WebDAV</span></div>
+          <input id="x3-host" type="text" placeholder="X3 address (e.g. 192.168.1.50)" />
+          <button id="x3-mount">Mount over Wi-Fi</button>
+          <p id="mount-msg" class="muted"></p>
+        </div>
+
+        <label class="toggle">
+          <input type="checkbox" id="autostart" />
+          Start services when Readloop launches
+        </label>
+
+        <button id="change-token" class="link">Change Readwise token</button>
+      </section>
     </main>
   </body>
 </html>

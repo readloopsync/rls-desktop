@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "rlsapp",
+  "productName": "Readloop",
   "version": "0.1.0",
   "identifier": "studio.humanandco.readloop",
   "build": {
@@ -13,9 +13,17 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "rlsapp",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Readloop",
+        "width": 400,
+        "height": 660,
+        "resizable": false,
+        "decorations": false,
+        "transparent": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "focus": true
       }
     ],
     "security": {
