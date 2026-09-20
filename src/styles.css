@@ -67,7 +67,12 @@ body {
 .brand-logo path,
 .brand-logo polygon { fill: currentColor; }
 
-.dots { display: flex; gap: 7px; }
+.dots { display: flex; gap: 12px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.4px;
+  color: var(--muted);
+}
 .dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--off);
@@ -75,8 +80,15 @@ body {
 }
 .dot.on { background: var(--on); }
 
+.status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.status-text { font-size: 13px; color: var(--fg); }
+.status-row .primary { min-width: 78px; }
+
+.footer-links { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
 /* Layout ------------------------------------------------------------------- */
-#app { padding: 14px 16px 22px; display: flex; flex-direction: column; gap: 12px; }
+#app { padding: 16px; }
+#setup, #dash { display: flex; flex-direction: column; gap: 14px; }
 
 .card {
   background: var(--surface);
@@ -143,9 +155,6 @@ button.link {
   padding: 2px 0; align-self: flex-start; font-size: 12px;
 }
 button.link:hover { color: var(--accent); background: none; text-decoration: underline; }
-
-.run-row { display: flex; align-items: center; gap: 12px; }
-.run-row .primary { min-width: 78px; }
 
 /* Copyable value chips ----------------------------------------------------- */
 .field {

@@ -339,8 +339,13 @@ pub fn run() {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open_i, &sep, &start_i, &stop_i, &sep, &quit_i])?;
 
+            // Menu-bar icon: the wordmark's infinity mark, as a template image so
+            // macOS tints it to match the menu bar (dark/light) automatically.
+            let tray_icon =
+                tauri::image::Image::from_bytes(include_bytes!("../icons/tray@2x.png"))?;
             TrayIconBuilder::with_id("main-tray")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_icon)
+                .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {

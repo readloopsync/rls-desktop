@@ -75,14 +75,7 @@ async function refresh() {
   const anyRunning = view.opds_running || view.kosync_running;
   setText("run-toggle", anyRunning ? "Stop" : "Start");
   $("run-toggle").dataset.running = String(anyRunning);
-  setText(
-    "run-label",
-    anyRunning
-      ? `running on ${view.lan_ip}`
-      : view.configured
-        ? "stopped"
-        : "add a token to start",
-  );
+  setText("run-label", anyRunning ? `Running on ${view.lan_ip}` : "Not running");
 
   setText("url-opds", view.opds_url);
   setText("opds-user", `user: ${view.opds_user}`);
@@ -117,7 +110,7 @@ function renderRemote(ts: TsInfo) {
   }
   if (ts.funnel_on) {
     body.innerHTML = `
-      <p class="muted">Public URLs — use these on the X3 to reach Readloop from anywhere:</p>
+      <p class="muted">Public URLs — use these on your CrossPoint device to reach Readloop from anywhere:</p>
       <div class="field" data-copy>${ts.public_opds_url}</div>
       <div class="field" data-copy>${ts.public_kosync_url}</div>
       <button id="remote-off">Turn off remote access</button>`;
@@ -128,8 +121,9 @@ function renderRemote(ts: TsInfo) {
     return;
   }
   body.innerHTML = `
-    <p class="muted">Publish a secure public URL (via Tailscale Funnel) so the X3
-    works away from home — no router setup.</p>
+    <p class="muted">Publish a secure public URL (via Tailscale Funnel) so CrossPoint
+    works away from home — no router setup.</p>`;
+  body.innerHTML += `
     <button class="primary" id="remote-on">Enable remote access</button>
     <p id="remote-msg" class="muted"></p>`;
   $("remote-on").addEventListener("click", async () => {
@@ -193,6 +187,9 @@ window.addEventListener("DOMContentLoaded", () => {
   $("token-link").addEventListener("click", (e) => {
     e.preventDefault();
     openUrl("https://readwise.io/access_token");
+  });
+  $("setup-guide").addEventListener("click", () => {
+    openUrl("https://github.com/readloopsync/rls-desktop/blob/main/docs/SETUP.md");
   });
   $("change-token").addEventListener("click", () => {
     $("setup").classList.remove("hidden");
