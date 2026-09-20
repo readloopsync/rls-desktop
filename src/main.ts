@@ -24,6 +24,7 @@ interface AppView {
   kosync_running: boolean;
   x3_host: string;
   autostart_services: boolean;
+  launch_at_login: boolean;
   tailscale: TsInfo;
 }
 
@@ -94,6 +95,7 @@ async function refresh() {
 
   ($("x3-host") as HTMLInputElement).value = view.x3_host;
   ($("autostart") as HTMLInputElement).checked = view.autostart_services;
+  ($("launch-login") as HTMLInputElement).checked = view.launch_at_login;
 }
 
 function renderRemote(ts: TsInfo) {
@@ -198,6 +200,15 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   $("autostart").addEventListener("change", (e) => {
     invoke("set_autostart", { on: (e.target as HTMLInputElement).checked });
+  });
+  $("launch-login").addEventListener("change", async (e) => {
+    const on = (e.target as HTMLInputElement).checked;
+    try {
+      await invoke("set_launch_at_login", { on });
+    } catch (err) {
+      toast(String(err));
+      (e.target as HTMLInputElement).checked = !on; // revert on failure
+    }
   });
   $("x3-host").addEventListener("change", (e) => {
     invoke("set_x3_host", { host: (e.target as HTMLInputElement).value.trim() });

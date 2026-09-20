@@ -19,6 +19,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager, State, WindowEvent,
 };
+use tauri_plugin_autostart::ManagerExt;
 
 /// Logical service names (also the sidecar subdir names in a release bundle).
 const SVC_OPDS: &str = "news2reader";
@@ -56,6 +57,8 @@ struct AppView {
     kosync_running: bool,
     x3_host: String,
     autostart_services: bool,
+    /// OS launch-at-login for the app itself.
+    launch_at_login: bool,
     tailscale: tailscale::TsInfo,
 }
 
@@ -176,8 +179,9 @@ fn start_all(state: &AppState) -> Result<(), String> {
 // ---- tauri commands --------------------------------------------------------
 
 #[tauri::command]
-fn get_view(state: State<AppState>) -> Result<AppView, String> {
+fn get_view(app: tauri::AppHandle, state: State<AppState>) -> Result<AppView, String> {
     let cfg = state.config.lock().map_err(|e| e.to_string())?.clone();
+    let launch_at_login = app.autolaunch().is_enabled().unwrap_or(false);
     let ip = net::lan_ip();
     let opds_url = format!("http://{}:{}/opds", ip, cfg.opds_port);
     let kosync_url = format!("http://{}:{}", ip, cfg.kosync_port);
@@ -196,8 +200,19 @@ fn get_view(state: State<AppState>) -> Result<AppView, String> {
         kosync_running: *status.get(SVC_KOSYNC).unwrap_or(&false),
         x3_host: cfg.x3_host,
         autostart_services: cfg.autostart_services,
+        launch_at_login,
         tailscale: tailscale::info(cfg.kosync_port),
     })
+}
+
+#[tauri::command]
+fn set_launch_at_login(app: tauri::AppHandle, on: bool) -> Result<(), String> {
+    let m = app.autolaunch();
+    if on {
+        m.enable().map_err(|e| e.to_string())
+    } else {
+        m.disable().map_err(|e| e.to_string())
+    }
 }
 
 #[tauri::command]
@@ -282,6 +297,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             // Owned handle so it doesn't hold a borrow across set_activation_policy.
             let handle = app.handle().clone();
@@ -381,6 +400,7 @@ pub fn run() {
             set_token,
             set_x3_host,
             set_autostart,
+            set_launch_at_login,
             start_services,
             stop_services,
             enable_remote,
