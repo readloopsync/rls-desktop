@@ -56,10 +56,32 @@ struct AppView {
     opds_running: bool,
     kosync_running: bool,
     x3_host: String,
+    /// Device LAN IP the sync server last saw (empty if unknown) — for the mount.
+    detected_device_ip: String,
     autostart_services: bool,
     /// OS launch-at-login for the app itself.
     launch_at_login: bool,
     tailscale: tailscale::TsInfo,
+}
+
+/// Ask the local sync server for the last device IP it saw (shared-secret).
+fn detect_device_ip(kosync_port: u16, secret: &str) -> String {
+    if secret.is_empty() {
+        return String::new();
+    }
+    let url = format!("http://127.0.0.1:{kosync_port}/readloop/last-client");
+    match ureq::get(&url)
+        .set("x-readloop-seed", secret)
+        .timeout(std::time::Duration::from_millis(700))
+        .call()
+    {
+        Ok(r) => r
+            .into_json::<serde_json::Value>()
+            .ok()
+            .and_then(|v| v.get("ip").and_then(|s| s.as_str()).map(String::from))
+            .unwrap_or_default(),
+        Err(_) => String::new(),
+    }
 }
 
 // ---- path resolution -------------------------------------------------------
@@ -198,6 +220,7 @@ fn get_view(app: tauri::AppHandle, state: State<AppState>) -> Result<AppView, St
         kosync_pass: cfg.kosync_pass,
         opds_running: *status.get(SVC_OPDS).unwrap_or(&false),
         kosync_running: *status.get(SVC_KOSYNC).unwrap_or(&false),
+        detected_device_ip: detect_device_ip(cfg.kosync_port, &cfg.seed_secret),
         x3_host: cfg.x3_host,
         autostart_services: cfg.autostart_services,
         launch_at_login,

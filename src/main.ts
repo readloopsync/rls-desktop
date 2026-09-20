@@ -23,6 +23,7 @@ interface AppView {
   opds_running: boolean;
   kosync_running: boolean;
   x3_host: string;
+  detected_device_ip: string;
   autostart_services: boolean;
   launch_at_login: boolean;
   tailscale: TsInfo;
@@ -86,7 +87,12 @@ async function refresh() {
 
   renderRemote(view.tailscale);
 
-  ($("x3-host") as HTMLInputElement).value = view.x3_host;
+  // Don't clobber the field while the user is editing it; otherwise prefill the
+  // saved host, falling back to the auto-detected device IP.
+  const hostEl = $("x3-host") as HTMLInputElement;
+  if (document.activeElement !== hostEl) {
+    hostEl.value = view.x3_host || view.detected_device_ip;
+  }
   ($("autostart") as HTMLInputElement).checked = view.autostart_services;
   ($("launch-login") as HTMLInputElement).checked = view.launch_at_login;
 }
@@ -190,6 +196,10 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   $("setup-guide").addEventListener("click", () => {
     openUrl("https://github.com/readloopsync/rls-desktop/blob/main/docs/SETUP.md");
+  });
+  $("find-ip").addEventListener("click", (e) => {
+    e.preventDefault();
+    openUrl("https://github.com/readloopsync/rls-desktop/blob/main/docs/FIND-IP.md");
   });
   $("change-token").addEventListener("click", () => {
     $("setup").classList.remove("hidden");
