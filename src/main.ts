@@ -159,10 +159,13 @@ async function saveToken() {
 
 async function toggleRun() {
   const running = $("run-toggle").dataset.running === "true";
+  const err = $("run-error");
+  err.classList.add("hidden");
   try {
     await invoke(running ? "stop_services" : "start_services");
   } catch (e) {
-    setText("run-label", String(e));
+    err.textContent = String(e);
+    err.classList.remove("hidden"); // persists; refresh() never touches it
   }
   await refresh();
 }

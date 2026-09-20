@@ -45,6 +45,15 @@ pub struct AppConfig {
     #[serde(default)]
     pub x3_host: String,
 
+    /// Optional path overrides for the Node runtime + service dirs. Empty = use
+    /// the bundled sidecars (release). Set for dev / running from source.
+    #[serde(default)]
+    pub node_path: String,
+    #[serde(default)]
+    pub opds_dir: String,
+    #[serde(default)]
+    pub kosync_dir: String,
+
     /// Start the services when the app launches.
     #[serde(default = "default_true")]
     pub autostart_services: bool,
@@ -89,6 +98,9 @@ impl Default for AppConfig {
             token_enc_key: gen_enc_key(),
             seed_secret: gen_password(),
             x3_host: String::new(),
+            node_path: String::new(),
+            opds_dir: String::new(),
+            kosync_dir: String::new(),
             autostart_services: true,
         }
     }

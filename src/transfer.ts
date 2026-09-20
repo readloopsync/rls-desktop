@@ -23,8 +23,10 @@ function host(): string {
 
 /** Resize the window to fit its content (height only; width stays fixed). */
 async function fitWindow() {
-  await new Promise((r) => requestAnimationFrame(() => r(null)));
-  const h = Math.min(Math.max(document.documentElement.scrollHeight, 260), 760);
+  // Wait two frames so freshly-inserted rows are laid out before measuring.
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+  const content = document.getElementById("tapp")!.getBoundingClientRect().height;
+  const h = Math.min(Math.max(Math.ceil(content) + 10, 260), 760);
   try {
     await getCurrentWindow().setSize(new LogicalSize(440, h));
   } catch {

@@ -88,21 +88,26 @@ fn detect_device_ip(kosync_port: u16, secret: &str) -> String {
 
 /// Resolve runtime paths. Dev builds point at the sibling repos via env vars;
 /// release builds resolve bundled sidecars under the app resource dir.
-fn resolve_paths(app: &tauri::AppHandle) -> Paths {
+fn resolve_paths(app: &tauri::AppHandle, cfg: &AppConfig) -> Paths {
     let resource = app.path().resource_dir().unwrap_or_else(|_| PathBuf::from("."));
     let services_root = resource.join("services");
 
-    let node = std::env::var("RLS_NODE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| services_root.join("node/bin/node"));
+    // Precedence: env override → config override → bundled sidecar default.
+    let pick = |env_key: &str, cfg_val: &str, default: PathBuf| -> PathBuf {
+        if let Ok(v) = std::env::var(env_key) {
+            if !v.is_empty() {
+                return PathBuf::from(v);
+            }
+        }
+        if !cfg_val.is_empty() {
+            return PathBuf::from(cfg_val);
+        }
+        default
+    };
 
-    let opds_dir = std::env::var("RLS_OPDS_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| services_root.join(SVC_OPDS));
-
-    let kosync_dir = std::env::var("RLS_KOSYNC_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| services_root.join(SVC_KOSYNC));
+    let node = pick("RLS_NODE", &cfg.node_path, services_root.join("node/bin/node"));
+    let opds_dir = pick("RLS_OPDS_DIR", &cfg.opds_dir, services_root.join(SVC_OPDS));
+    let kosync_dir = pick("RLS_KOSYNC_DIR", &cfg.kosync_dir, services_root.join(SVC_KOSYNC));
 
     let data_dir = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
     let log_dir = app.path().app_log_dir().unwrap_or_else(|_| data_dir.join("logs"));
@@ -401,12 +406,12 @@ pub fn run() {
             // confirm keyboard input works; accessory/no-Dock is restored via
             // NSPanel once verified.
 
-            let paths = resolve_paths(&handle);
             let config_dir = app
                 .path()
                 .app_config_dir()
                 .unwrap_or_else(|_| PathBuf::from("."));
             let cfg = AppConfig::load(&config_dir);
+            let paths = resolve_paths(&handle, &cfg);
             let autostart = cfg.autostart_services && cfg.is_configured();
 
             let state = AppState {
