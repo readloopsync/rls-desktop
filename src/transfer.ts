@@ -39,29 +39,40 @@ function setStatus(state: "checking" | "ok" | "bad", text: string) {
   $("drop").classList.toggle("disabled", state !== "ok");
 }
 
-async function check() {
+let lastOk: boolean | null = null;
+
+/** Apply status; only resize the window when the connected state flips (so
+ * background polls don't cause jitter). */
+function update(state: "ok" | "bad", text: string) {
+  setStatus(state, text);
+  const ok = state === "ok";
+  if (ok !== lastOk) {
+    lastOk = ok;
+    fitWindow();
+  }
+}
+
+/** `silent` background polls skip the "Checking…" flash. */
+async function check(silent = false) {
   if (checking) return;
   const h = host();
   if (!h) {
-    setStatus("bad", "Enter the device's address");
     connected = false;
-    await fitWindow();
+    update("bad", "Enter the device's address");
     return;
   }
   checking = true;
-  setStatus("checking", "Checking…");
+  if (!silent) setStatus("checking", "Checking…");
   try {
     const s = await invoke<WebdavStatus>("webdav_check", { host: h });
     connected = s.writable;
-    if (s.writable) setStatus("ok", `Connected to ${h}`);
-    else setStatus("bad", s.error || "Not reachable");
+    update(s.writable ? "ok" : "bad", s.writable ? `Connected to ${h}` : (s.error || "Not reachable"));
   } catch (e) {
     connected = false;
-    setStatus("bad", String(e));
+    update("bad", String(e));
   } finally {
     checking = false;
   }
-  await fitWindow();
 }
 
 function addRow(name: string): HTMLElement {
@@ -142,9 +153,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   await check();
 
-  // Auto re-scan while disconnected so it connects as soon as File Transfer is
-  // turned on (and notices if it drops), without the user clicking.
+  // Poll every 4s while the window is open so it notices File Transfer being
+  // turned on OR off (silent = no "Checking…" flash).
   window.setInterval(() => {
-    if (!connected && !checking) check();
+    if (!checking) check(true);
   }, 4000);
 });

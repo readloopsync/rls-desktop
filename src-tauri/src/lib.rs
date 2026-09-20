@@ -201,13 +201,25 @@ fn start_all(state: &AppState) -> Result<(), String> {
 // ---- tauri commands --------------------------------------------------------
 
 #[tauri::command]
-fn get_view(app: tauri::AppHandle, state: State<AppState>) -> Result<AppView, String> {
+async fn get_view(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<AppView, String> {
+    // Fast, non-blocking bits on the calling thread (lock is dropped immediately).
     let cfg = state.config.lock().map_err(|e| e.to_string())?.clone();
     let launch_at_login = app.autolaunch().is_enabled().unwrap_or(false);
     let ip = net::lan_ip();
     let opds_url = format!("http://{}:{}/opds", ip, cfg.opds_port);
     let kosync_url = format!("http://{}:{}", ip, cfg.kosync_port);
     let status = state.services.status(&[SVC_OPDS, SVC_KOSYNC]);
+
+    // Slow bits (network probe + spawning the tailscale CLI) off the main thread.
+    let kport = cfg.kosync_port;
+    let secret = cfg.seed_secret.clone();
+    let (detected_device_ip, tsinfo) =
+        tauri::async_runtime::spawn_blocking(move || {
+            (detect_device_ip(kport, &secret), tailscale::info(kport))
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+
     Ok(AppView {
         configured: cfg.is_configured(),
         has_token: !cfg.readwise_token.trim().is_empty(),
@@ -220,11 +232,11 @@ fn get_view(app: tauri::AppHandle, state: State<AppState>) -> Result<AppView, St
         kosync_pass: cfg.kosync_pass,
         opds_running: *status.get(SVC_OPDS).unwrap_or(&false),
         kosync_running: *status.get(SVC_KOSYNC).unwrap_or(&false),
-        detected_device_ip: detect_device_ip(cfg.kosync_port, &cfg.seed_secret),
+        detected_device_ip,
         x3_host: cfg.x3_host,
         autostart_services: cfg.autostart_services,
         launch_at_login,
-        tailscale: tailscale::info(cfg.kosync_port),
+        tailscale: tsinfo,
     })
 }
 
@@ -284,14 +296,24 @@ fn disable_remote() -> Result<(), String> {
     tailscale::disable()
 }
 
+// Both run blocking network I/O, so they execute on the blocking pool — never
+// the main thread — to keep the UI responsive (no spinner/beachball).
 #[tauri::command]
-fn webdav_check(host: String) -> webdav::WebdavStatus {
-    webdav::check(&host)
+async fn webdav_check(host: String) -> webdav::WebdavStatus {
+    tauri::async_runtime::spawn_blocking(move || webdav::check(&host))
+        .await
+        .unwrap_or(webdav::WebdavStatus {
+            reachable: false,
+            writable: false,
+            error: "check failed".into(),
+        })
 }
 
 #[tauri::command]
-fn send_file(host: String, path: String) -> Result<(), String> {
-    webdav::upload(&host, &path)
+async fn send_file(host: String, path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || webdav::upload(&host, &path))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Open (or focus) the stay-on-top "Send to CrossPoint" window.
