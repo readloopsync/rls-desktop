@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Send to CrossPoint</title>
+    <script type="module" src="/src/transfer.ts" defer></script>
+  </head>
+  <body class="transfer">
+    <main id="tapp">
+      <h2 class="thead">Send to CrossPoint</h2>
+
+      <div class="card">
+        <label class="lbl" for="host">Device address</label>
+        <input id="host" type="text" placeholder="e.g. 192.168.1.50" />
+        <div class="status-line">
+          <div id="status" class="status"><span class="dot"></span><span id="status-text">Checking…</span></div>
+          <button id="recheck" class="mini">Check again</button>
+        </div>
+        <div id="instructions" class="note hidden">
+          Turn on <b>File Transfer</b> on the device: <b>Home › Join a Network</b>
+          — pick the same Wi-Fi this computer is on — then it'll connect here.
+        </div>
+        <a href="#" id="find-ip" class="hint">How do I find my device's IP? &rsaquo;</a>
+      </div>
+
+      <div id="drop" class="drop-zone">
+        <div class="drop-big">Drag files here</div>
+        <div class="muted">or</div>
+        <button id="choose">Choose files…</button>
+      </div>
+
+      <div id="uploads-wrap" class="hidden">
+        <div class="uploads-head">Sent</div>
+        <div id="uploads" class="uploads"></div>
+      </div>
+    </main>
+  </body>
+</html>

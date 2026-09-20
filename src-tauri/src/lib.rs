@@ -285,33 +285,79 @@ fn disable_remote() -> Result<(), String> {
 }
 
 #[tauri::command]
-fn mount_x3(state: State<AppState>) -> Result<String, String> {
-    let host = state.config.lock().map_err(|e| e.to_string())?.x3_host.clone();
-    // Port/path are placeholders until CrossPoint's WebDAV endpoint is confirmed
-    // on-device; kept here so the mount path is exercised end to end.
-    let point = webdav::mount(&host, 80, "")?;
-    webdav::reveal(&point);
-    Ok(point)
+fn webdav_check(host: String) -> webdav::WebdavStatus {
+    webdav::check(&host)
+}
+
+#[tauri::command]
+fn send_file(host: String, path: String) -> Result<(), String> {
+    webdav::upload(&host, &path)
+}
+
+/// Open (or focus) the stay-on-top "Send to CrossPoint" window.
+#[tauri::command]
+fn open_transfer(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    activate_app();
+    if let Some(win) = app.get_webview_window("transfer") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return Ok(());
+    }
+    tauri::WebviewWindowBuilder::new(&app, "transfer", tauri::WebviewUrl::App("transfer.html".into()))
+        .title("Send to CrossPoint")
+        .inner_size(440.0, 420.0)
+        .min_inner_size(360.0, 260.0)
+        .resizable(true)
+        .always_on_top(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 // ---- app setup -------------------------------------------------------------
 
-/// Show and focus the popover, positioned near the tray icon.
+/// Bring the app to the foreground (make it the active app) so its window can
+/// become key and receive keystrokes. Changing the activation policy alone
+/// doesn't activate an accessory app — this does.
+#[cfg(target_os = "macos")]
+fn activate_app() {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::NSApplication;
+    if let Some(mtm) = MainThreadMarker::new() {
+        let ns_app = NSApplication::sharedApplication(mtm);
+        #[allow(deprecated)]
+        ns_app.activateIgnoringOtherApps(true);
+    }
+}
+
+/// Show and focus the popover. On macOS we become a Regular app and activate so
+/// the window can become key (accessory apps can't take keyboard focus
+/// otherwise), then drop back to accessory when it hides.
 fn show_popover(app: &tauri::AppHandle) {
+    #[cfg(target_os = "macos")]
+    activate_app();
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
         let _ = win.set_focus();
     }
 }
 
-fn toggle_popover(app: &tauri::AppHandle) {
+fn hide_popover(app: &tauri::AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
-        if win.is_visible().unwrap_or(false) {
-            let _ = win.hide();
-        } else {
-            let _ = win.show();
-            let _ = win.set_focus();
-        }
+        let _ = win.hide();
+    }
+}
+
+fn toggle_popover(app: &tauri::AppHandle) {
+    let visible = app
+        .get_webview_window("main")
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false);
+    if visible {
+        hide_popover(app);
+    } else {
+        show_popover(app);
     }
 }
 
@@ -319,6 +365,7 @@ fn toggle_popover(app: &tauri::AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -328,9 +375,9 @@ pub fn run() {
             // Owned handle so it doesn't hold a borrow across set_activation_policy.
             let handle = app.handle().clone();
 
-            // Hide the dock icon on macOS — this is a menu-bar app.
-            #[cfg(target_os = "macos")]
-            let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            // NOTE: temporarily running as a Regular app (Dock icon visible) to
+            // confirm keyboard input works; accessory/no-Dock is restored via
+            // NSPanel once verified.
 
             let paths = resolve_paths(&handle);
             let config_dir = app
@@ -416,7 +463,7 @@ pub fn run() {
                 let w = win.clone();
                 win.on_window_event(move |ev| {
                     if let WindowEvent::Focused(false) = ev {
-                        let _ = w.hide();
+                        hide_popover(w.app_handle());
                     }
                 });
             }
@@ -433,7 +480,9 @@ pub fn run() {
             stop_services,
             enable_remote,
             disable_remote,
-            mount_x3,
+            webdav_check,
+            send_file,
+            open_transfer,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Readloop")

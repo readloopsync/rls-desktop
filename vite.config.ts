@@ -6,6 +6,17 @@ const host = process.env.TAURI_DEV_HOST;
 // https://vite.dev/config/
 export default defineConfig(() => ({
 
+  // Two entry points: the menubar popover (index.html) and the stay-on-top
+  // file-transfer window (transfer.html).
+  build: {
+    rollupOptions: {
+      input: {
+        main: "index.html",
+        transfer: "transfer.html",
+      },
+    },
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

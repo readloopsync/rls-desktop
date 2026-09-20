@@ -87,12 +87,6 @@ async function refresh() {
 
   renderRemote(view.tailscale);
 
-  // Don't clobber the field while the user is editing it; otherwise prefill the
-  // saved host, falling back to the auto-detected device IP.
-  const hostEl = $("x3-host") as HTMLInputElement;
-  if (document.activeElement !== hostEl) {
-    hostEl.value = view.x3_host || view.detected_device_ip;
-  }
   ($("autostart") as HTMLInputElement).checked = view.autostart_services;
   ($("launch-login") as HTMLInputElement).checked = view.launch_at_login;
 }
@@ -173,22 +167,12 @@ async function toggleRun() {
   await refresh();
 }
 
-async function mountX3() {
-  const host = ($("x3-host") as HTMLInputElement).value.trim();
-  setText("mount-msg", "Mounting…");
-  try {
-    await invoke("set_x3_host", { host });
-    const point = await invoke<string>("mount_x3");
-    setText("mount-msg", `Mounted at ${point}`);
-  } catch (e) {
-    setText("mount-msg", String(e));
-  }
-}
-
 window.addEventListener("DOMContentLoaded", () => {
   $("token-save").addEventListener("click", saveToken);
   $("run-toggle").addEventListener("click", toggleRun);
-  $("x3-mount").addEventListener("click", mountX3);
+  $("open-transfer").addEventListener("click", () => {
+    invoke("open_transfer").catch((e) => console.error("open_transfer", e));
+  });
 
   $("token-link").addEventListener("click", (e) => {
     e.preventDefault();
@@ -196,10 +180,6 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   $("setup-guide").addEventListener("click", () => {
     openUrl("https://github.com/readloopsync/rls-desktop/blob/main/docs/SETUP.md");
-  });
-  $("find-ip").addEventListener("click", (e) => {
-    e.preventDefault();
-    openUrl("https://github.com/readloopsync/rls-desktop/blob/main/docs/FIND-IP.md");
   });
   $("change-token").addEventListener("click", () => {
     $("setup").classList.remove("hidden");
@@ -217,10 +197,6 @@ window.addEventListener("DOMContentLoaded", () => {
       (e.target as HTMLInputElement).checked = !on; // revert on failure
     }
   });
-  $("x3-host").addEventListener("change", (e) => {
-    invoke("set_x3_host", { host: (e.target as HTMLInputElement).value.trim() });
-  });
-
   // Delegated handlers: copy-on-click fields and external-link buttons.
   document.addEventListener("click", (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-copy]");

@@ -200,3 +200,46 @@ button.link:hover { color: var(--accent); background: none; text-decoration: und
 }
 
 .hidden { display: none !important; }
+
+/* ---- Transfer window ----------------------------------------------------- */
+body.transfer { width: auto; }
+#tapp { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.thead { margin: 0; font-size: 15px; font-weight: 700; }
+.lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+
+.status-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mini { font-size: 11px; padding: 4px 9px; flex: none; }
+.status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off); flex: none; }
+.status[data-state="ok"] .dot { background: var(--on); }
+.status[data-state="ok"] { color: var(--fg); }
+.status[data-state="bad"] .dot { background: var(--error); }
+.status[data-state="checking"] .dot { background: var(--accent); }
+
+.note {
+  font-size: 12px; line-height: 1.45; color: var(--fg);
+  background: var(--accent-soft); border-radius: 8px; padding: 9px 11px;
+}
+
+.drop-zone {
+  border: 1.5px dashed var(--hairline);
+  border-radius: 12px;
+  padding: 26px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.drop-zone.hover { border-color: var(--accent); background: var(--accent-soft); }
+.drop-zone.disabled { opacity: 0.5; }
+.drop-big { font-size: 14px; font-weight: 600; }
+
+.uploads-head { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 7px; }
+.uploads { display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; }
+.urow {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 12px; background: var(--field-bg); border-radius: 7px; padding: 7px 10px;
+}
+.uname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ustate { color: var(--muted); flex: none; }
+.ustate.ok { color: var(--on); }
+.ustate.bad { color: var(--error); }
