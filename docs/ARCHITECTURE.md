@@ -43,8 +43,22 @@ Goal: the X3 shows up as a drive you drag files onto.
 - The app already knows the X3's address (for OPDS), so "Mount X3" is a one-click action once connected. Confirm Crosspoint's WebDAV port/path/auth at build time. macOS first.
 
 ## Networking scope
-- **LAN-first** (device + computer on the same Wi-Fi). The app shows the machine's **LAN IP** OPDS/KOSync URLs + QR codes.
-- Remote access (Tailscale Funnel etc.) is **out of scope** for the app — that's a homelab/self-host concern, handled by the Docker/launchd path in the main repo.
+- **LAN-first, zero-config default** — device + computer on the same Wi-Fi. The
+  app shows the machine's **LAN IP** OPDS/KOSync URLs + credentials as
+  copy-on-click fields. (QR codes were removed — the X3 has no camera to scan
+  them.)
+- **Optional one-click remote access via Tailscale Funnel.** The X3 can't run a
+  VPN (ESP32-C3), so Funnel is the fit: it gives a stable public **HTTPS** URL
+  that proxies to the local services — no router config, survives CGNAT. The app
+  **detects** Tailscale; if present + logged in it offers "Enable remote access",
+  otherwise it links out to install it. Uses a **dedicated funnel port (443)**
+  and mounts delivery at `/` + sync at `/sync`, so it never disturbs a funnel the
+  user already runs on another port (e.g. a self-host deploy on 10000). Public
+  URLs: `https://<node>.<tailnet>.ts.net/opds` and `…/sync`.
+  - Rationale over alternatives: DynDNS+port-forward dies on CGNAT and is too
+    technical; Cloudflare tunnel needs a user domain; a Readloop-hosted relay
+    would be the most seamless but commits the project to paid infra + an
+    abuse/security surface — revisit only if it gets traction.
 
 ## UI (popover)
 - Readwise token field (masked) + "connected" state.

@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+interface TsInfo {
+  installed: boolean;
+  running: boolean;
+  dns_name: string;
+  funnel_on: boolean;
+  public_opds_url: string;
+  public_kosync_url: string;
+}
+
 interface AppView {
   configured: boolean;
   has_token: boolean;
@@ -11,12 +20,11 @@ interface AppView {
   opds_pass: string;
   kosync_user: string;
   kosync_pass: string;
-  opds_qr_svg: string;
-  kosync_qr_svg: string;
   opds_running: boolean;
   kosync_running: boolean;
   x3_host: string;
   autostart_services: boolean;
+  tailscale: TsInfo;
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -25,6 +33,25 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
 function setText(id: string, value: string) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+let toastTimer: number | undefined;
+function toast(msg: string) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => t.classList.add("hidden"), 1200);
+}
+
+async function copyText(text: string) {
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied");
+  } catch {
+    toast("Select and copy");
+  }
 }
 
 let refreshTimer: number | undefined;
@@ -38,15 +65,12 @@ async function refresh() {
     return;
   }
 
-  // Setup vs dashboard.
   $("setup").classList.toggle("hidden", view.has_token);
   $("dash").classList.toggle("hidden", !view.has_token);
 
-  // Status dots.
   $("dot-opds").classList.toggle("on", view.opds_running);
   $("dot-kosync").classList.toggle("on", view.kosync_running);
 
-  // Run toggle.
   const anyRunning = view.opds_running || view.kosync_running;
   setText("run-toggle", anyRunning ? "Stop" : "Start");
   $("run-toggle").dataset.running = String(anyRunning);
@@ -59,21 +83,64 @@ async function refresh() {
         : "add a token to start",
   );
 
-  // Delivery card.
-  $("qr-opds").innerHTML = view.opds_qr_svg;
   setText("url-opds", view.opds_url);
-  setText("opds-user", view.opds_user);
-  setText("opds-pass", view.opds_pass);
-
-  // Sync card.
-  $("qr-kosync").innerHTML = view.kosync_qr_svg;
+  setText("opds-user", `user: ${view.opds_user}`);
+  setText("opds-pass", `pass: ${view.opds_pass}`);
   setText("url-kosync", view.kosync_url);
-  setText("kosync-user", view.kosync_user);
-  setText("kosync-pass", view.kosync_pass);
+  setText("kosync-user", `user: ${view.kosync_user}`);
+  setText("kosync-pass", `pass: ${view.kosync_pass}`);
 
-  // X3 + autostart.
+  renderRemote(view.tailscale);
+
   ($("x3-host") as HTMLInputElement).value = view.x3_host;
   ($("autostart") as HTMLInputElement).checked = view.autostart_services;
+}
+
+function renderRemote(ts: TsInfo) {
+  const body = $("remote-body");
+
+  if (!ts.installed) {
+    body.innerHTML = `
+      <p class="muted">Your addresses above only work on the same Wi-Fi. For access
+      anywhere, Readloop can publish a secure URL with Tailscale (free).</p>
+      <button class="primary" data-open="https://tailscale.com/download">Get Tailscale →</button>`;
+    return;
+  }
+  if (!ts.running) {
+    body.innerHTML = `
+      <p class="muted">Tailscale is installed but not signed in. Open Tailscale,
+      sign in, then reopen this panel.</p>
+      <button data-open="https://login.tailscale.com/start">Sign in to Tailscale →</button>`;
+    return;
+  }
+  if (ts.funnel_on) {
+    body.innerHTML = `
+      <p class="muted">Public URLs — use these on the X3 to reach Readloop from anywhere:</p>
+      <div class="field" data-copy>${ts.public_opds_url}</div>
+      <div class="field" data-copy>${ts.public_kosync_url}</div>
+      <button id="remote-off">Turn off remote access</button>`;
+    $("remote-off").addEventListener("click", async () => {
+      try { await invoke("disable_remote"); toast("Remote access off"); } catch (e) { toast(String(e)); }
+      refresh();
+    });
+    return;
+  }
+  body.innerHTML = `
+    <p class="muted">Publish a secure public URL (via Tailscale Funnel) so the X3
+    works away from home — no router setup.</p>
+    <button class="primary" id="remote-on">Enable remote access</button>
+    <p id="remote-msg" class="muted"></p>`;
+  $("remote-on").addEventListener("click", async () => {
+    setText("remote-msg", "Enabling…");
+    try {
+      await invoke<string>("enable_remote");
+      toast("Remote access on");
+    } catch (e) {
+      setText("remote-msg", String(e));
+      return;
+    }
+    refresh();
+  });
 }
 
 async function saveToken() {
@@ -125,18 +192,27 @@ window.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     openUrl("https://readwise.io/access_token");
   });
-
   $("change-token").addEventListener("click", () => {
     $("setup").classList.remove("hidden");
     $("dash").classList.add("hidden");
   });
-
   $("autostart").addEventListener("change", (e) => {
     invoke("set_autostart", { on: (e.target as HTMLInputElement).checked });
   });
-
   $("x3-host").addEventListener("change", (e) => {
     invoke("set_x3_host", { host: (e.target as HTMLInputElement).value.trim() });
+  });
+
+  // Delegated handlers: copy-on-click fields and external-link buttons.
+  document.addEventListener("click", (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>("[data-copy]");
+    if (el) {
+      const v = el.textContent ?? "";
+      copyText(v.replace(/^(user|pass):\s*/, ""));
+      return;
+    }
+    const link = (e.target as HTMLElement).closest<HTMLElement>("[data-open]");
+    if (link) openUrl(link.dataset.open!);
   });
 
   refresh();

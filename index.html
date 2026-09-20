@@ -38,24 +38,27 @@
 
         <div class="card">
           <div class="card-head"><h3>Deliver to X3</h3><span class="tag">OPDS</span></div>
-          <p class="muted">Add this OPDS catalog on the X3 (Add Catalog).</p>
-          <div class="qr" id="qr-opds"></div>
-          <code class="url" id="url-opds"></code>
+          <p class="muted">On the X3: Add Catalog → paste this address.</p>
+          <div class="field" data-copy id="url-opds"></div>
           <div class="creds">
-            <span>user <b id="opds-user"></b></span>
-            <span>pass <b id="opds-pass"></b></span>
+            <span class="field" data-copy id="opds-user"></span>
+            <span class="field" data-copy id="opds-pass"></span>
           </div>
         </div>
 
         <div class="card">
           <div class="card-head"><h3>Sync progress</h3><span class="tag">KOSync</span></div>
           <p class="muted">On the X3: Settings → KOReader Sync → this server; Sign Up once.</p>
-          <div class="qr" id="qr-kosync"></div>
-          <code class="url" id="url-kosync"></code>
+          <div class="field" data-copy id="url-kosync"></div>
           <div class="creds">
-            <span>user <b id="kosync-user"></b></span>
-            <span>pass <b id="kosync-pass"></b></span>
+            <span class="field" data-copy id="kosync-user"></span>
+            <span class="field" data-copy id="kosync-pass"></span>
           </div>
+        </div>
+
+        <div class="card" id="remote-card">
+          <div class="card-head"><h3>Remote access</h3><span class="tag">Wi-Fi anywhere</span></div>
+          <div id="remote-body"></div>
         </div>
 
         <div class="card">
@@ -73,5 +76,7 @@
         <button id="change-token" class="link">Change Readwise token</button>
       </section>
     </main>
+
+    <div id="toast" class="toast hidden">Copied</div>
   </body>
 </html>

@@ -6,6 +6,7 @@ mod autolink;
 mod config;
 mod net;
 mod services;
+mod tailscale;
 mod webdav;
 
 use config::AppConfig;
@@ -51,12 +52,11 @@ struct AppView {
     opds_pass: String,
     kosync_user: String,
     kosync_pass: String,
-    opds_qr_svg: String,
-    kosync_qr_svg: String,
     opds_running: bool,
     kosync_running: bool,
     x3_host: String,
     autostart_services: bool,
+    tailscale: tailscale::TsInfo,
 }
 
 // ---- path resolution -------------------------------------------------------
@@ -186,8 +186,6 @@ fn get_view(state: State<AppState>) -> Result<AppView, String> {
         configured: cfg.is_configured(),
         has_token: !cfg.readwise_token.trim().is_empty(),
         lan_ip: ip,
-        opds_qr_svg: net::qr_svg(&opds_url, 176),
-        kosync_qr_svg: net::qr_svg(&kosync_url, 176),
         opds_url,
         kosync_url,
         opds_user: cfg.opds_user,
@@ -198,6 +196,7 @@ fn get_view(state: State<AppState>) -> Result<AppView, String> {
         kosync_running: *status.get(SVC_KOSYNC).unwrap_or(&false),
         x3_host: cfg.x3_host,
         autostart_services: cfg.autostart_services,
+        tailscale: tailscale::info(cfg.kosync_port),
     })
 }
 
@@ -234,6 +233,17 @@ fn start_services(state: State<AppState>) -> Result<(), String> {
 fn stop_services(state: State<AppState>) -> Result<(), String> {
     state.services.stop_all();
     Ok(())
+}
+
+#[tauri::command]
+fn enable_remote(state: State<AppState>) -> Result<String, String> {
+    let cfg = state.config.lock().map_err(|e| e.to_string())?.clone();
+    tailscale::enable(cfg.opds_port, cfg.kosync_port)
+}
+
+#[tauri::command]
+fn disable_remote() -> Result<(), String> {
+    tailscale::disable()
 }
 
 #[tauri::command]
@@ -373,6 +383,8 @@ pub fn run() {
             set_autostart,
             start_services,
             stop_services,
+            enable_remote,
+            disable_remote,
             mount_x3,
         ])
         .build(tauri::generate_context!())
